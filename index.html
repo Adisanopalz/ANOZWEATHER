@@ -12,33 +12,33 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(to bottom right, #0f172a, #1e293b);
+            background: linear-gradient(to bottom right, #0f172a, #111827);
             min-height: 100vh;
             color: white;
         }
 
         .glass-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1.5rem;
+            border-radius: 2rem;
         }
 
         .weather-icon-pulse {
-            animation: pulse 2s infinite ease-in-out;
+            animation: pulse 3s infinite ease-in-out;
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; }
+            0%, 100% { transform: translateY(0); opacity: 1; }
+            50% { transform: translateY(-10px); opacity: 0.8; }
         }
 
         .loading-spinner {
             border: 3px solid rgba(255, 255, 255, 0.1);
             border-radius: 50%;
-            border-top: 3px solid #3b82f6;
-            width: 24px;
-            height: 24px;
+            border-top: 3px solid #60a5fa;
+            width: 32px;
+            height: 32px;
             animation: spin 1s linear infinite;
         }
 
@@ -48,105 +48,97 @@
         }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-12">
 
-    <div class="max-w-2xl mx-auto">
-        <!-- Header & Search -->
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold tracking-tight mb-2 text-blue-400">ANOZWEATHER</h1>
-            <p class="text-slate-400">Pantau cuaca global dengan WeatherAPI</p>
+    <div class="max-w-xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-5xl font-extrabold tracking-tighter mb-3 bg-gradient-to-r from-blue-400 to-teal-300 bg-clip-text text-transparent italic">
+                ANOZWEATHER
+            </h1>
+            <p class="text-slate-500 font-medium">Bebas API Key • Data Real-time</p>
         </header>
 
-        <div class="flex flex-col gap-4 mb-8">
+        <!-- Search Section -->
+        <div class="flex flex-col gap-4 mb-10">
             <div class="relative group">
                 <input 
                     type="text" 
                     id="cityInput" 
-                    placeholder="Cari kota (misal: Jakarta, Tokyo...)" 
-                    class="w-full bg-slate-800/50 border border-slate-700 text-white px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-lg"
+                    placeholder="Masukkan nama kota..." 
+                    class="w-full bg-slate-900/40 border border-slate-800 text-white px-6 py-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-lg shadow-2xl"
                 >
                 <button 
                     onclick="searchCity()" 
-                    class="absolute right-3 top-3 bg-blue-600 hover:bg-blue-500 p-2 rounded-xl transition-colors"
+                    class="absolute right-4 top-4 bg-blue-600 hover:bg-blue-500 p-2.5 rounded-xl transition-all shadow-lg active:scale-95"
                 >
-                    <i data-lucide="search" class="w-6 h-6"></i>
+                    <i data-lucide="search" class="w-5 h-5"></i>
                 </button>
             </div>
             
             <button 
                 onclick="getCurrentLocation()" 
-                class="flex items-center justify-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors bg-blue-400/10 py-2 rounded-xl border border-blue-400/20"
+                class="flex items-center justify-center gap-2 text-sm font-semibold text-blue-400 hover:text-blue-300 transition-colors py-1"
             >
-                <i data-lucide="map-pin" class="w-4 h-4"></i>
-                Gunakan Lokasi Saat Ini
+                <i data-lucide="navigation" class="w-4 h-4"></i>
+                Deteksi Lokasi Otomatis
             </button>
         </div>
 
         <!-- Main Display -->
         <div id="weatherDisplay" class="hidden">
-            <div class="glass-card p-8 text-center relative overflow-hidden">
-                <div id="loadingOverlay" class="absolute inset-0 bg-slate-900/80 flex items-center justify-center z-10 hidden">
-                    <div class="loading-spinner"></div>
-                </div>
-
-                <h2 id="cityName" class="text-3xl font-bold mb-1">---</h2>
-                <p id="weatherDesc" class="text-slate-400 capitalize mb-6">---</p>
-
-                <div class="flex flex-col items-center mb-8">
-                    <div id="weatherIconContainer" class="weather-icon-pulse mb-4">
-                        <img id="weatherImg" src="" alt="weather-icon" class="w-24 h-24 hidden">
-                        <div id="fallbackIcon"><i data-lucide="sun" class="w-24 h-24 text-yellow-400"></i></div>
-                    </div>
-                    <div class="flex items-start">
-                        <span id="temperature" class="text-7xl font-bold">--</span>
-                        <span class="text-3xl font-semibold text-blue-400 mt-2">°C</span>
+            <div class="glass-card p-10 text-center relative overflow-hidden shadow-2xl">
+                <!-- Loading Overlay -->
+                <div id="loadingOverlay" class="absolute inset-0 bg-slate-950/60 backdrop-blur-md flex items-center justify-center z-20 hidden">
+                    <div class="flex flex-col items-center gap-3">
+                        <div class="loading-spinner"></div>
+                        <p class="text-sm font-medium text-blue-400">Memuat Data...</p>
                     </div>
                 </div>
 
-                <!-- Details Grid -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-slate-800/40 p-4 rounded-2xl flex items-center gap-4">
-                        <div class="p-3 bg-blue-500/20 rounded-xl">
-                            <i data-lucide="droplets" class="text-blue-400"></i>
+                <div class="relative z-10">
+                    <h2 id="cityName" class="text-3xl font-bold mb-1 tracking-tight">---</h2>
+                    <p id="weatherDesc" class="text-slate-400 font-medium mb-8">---</p>
+
+                    <div class="flex flex-col items-center mb-10">
+                        <div id="weatherIconContainer" class="weather-icon-pulse mb-6">
+                            <!-- Icon dynamic -->
                         </div>
-                        <div class="text-left">
-                            <p class="text-xs text-slate-400 uppercase tracking-wider">Kelembapan</p>
-                            <p id="humidity" class="text-xl font-bold">--%</p>
+                        <div class="flex items-start">
+                            <span id="temperature" class="text-8xl font-black tracking-tighter">--</span>
+                            <span class="text-4xl font-bold text-blue-500 mt-3 ml-1">°</span>
                         </div>
                     </div>
-                    <div class="bg-slate-800/40 p-4 rounded-2xl flex items-center gap-4">
-                        <div class="p-3 bg-teal-500/20 rounded-xl">
-                            <i data-lucide="wind" class="text-teal-400"></i>
+
+                    <!-- Details Grid -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white/5 p-5 rounded-3xl border border-white/5 flex flex-col items-center">
+                            <i data-lucide="droplets" class="text-blue-400 mb-2 w-5 h-5"></i>
+                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Kelembapan</p>
+                            <p id="humidity" class="text-xl font-bold text-slate-200">--%</p>
                         </div>
-                        <div class="text-left">
-                            <p class="text-xs text-slate-400 uppercase tracking-wider">Angin</p>
-                            <p id="windSpeed" class="text-xl font-bold">-- km/h</p>
+                        <div class="bg-white/5 p-5 rounded-3xl border border-white/5 flex flex-col items-center">
+                            <i data-lucide="wind" class="text-teal-400 mb-2 w-5 h-5"></i>
+                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Angin</p>
+                            <p id="windSpeed" class="text-xl font-bold text-slate-200">-- km/h</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Info / Error Message -->
-        <div id="infoMessage" class="glass-card p-12 text-center">
+        <!-- Feedback Message -->
+        <div id="infoMessage" class="glass-card p-16 text-center shadow-xl">
             <div id="infoIcon">
-                <i data-lucide="cloud-sun" class="w-16 h-16 mx-auto mb-4 text-slate-600"></i>
+                <i data-lucide="map" class="w-16 h-16 mx-auto mb-6 text-slate-700"></i>
             </div>
-            <p id="statusText" class="text-slate-400 text-lg">Cari kota atau gunakan lokasi Anda untuk melihat cuaca.</p>
-            <div id="apiInfo" class="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-xs">
-                Menggunakan data dari WeatherAPI.com
-            </div>
+            <p id="statusText" class="text-slate-400 text-lg font-medium">Mulai dengan mencari nama kota atau gunakan lokasi saat ini.</p>
         </div>
     </div>
 
     <script>
-        /**
-         * CONFIGURATION
-         * Kunjungi https://www.weatherapi.com/ untuk mendapatkan API KEY gratis.
-         * Key di bawah adalah placeholder.
-         */
-        const API_KEY = '69750036137a4e69888171723241405'; 
-        const BASE_URL = 'https://api.weatherapi.com/v1/current.json';
+        const GEO_URL = 'https://geocoding-api.open-meteo.com/v1/search';
+        const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast';
 
         lucide.createIcons();
 
@@ -154,54 +146,81 @@
         const infoMessage = document.getElementById('infoMessage');
         const loadingOverlay = document.getElementById('loadingOverlay');
 
-        async function fetchWeather(query) {
+        // Fungsi memetakan kode cuaca WMO ke Ikon & Deskripsi
+        function getWeatherDetails(code) {
+            const mapping = {
+                0: { desc: 'Cerah', icon: 'sun', color: 'text-yellow-400' },
+                1: { desc: 'Cerah Berawan', icon: 'cloud-sun', color: 'text-yellow-200' },
+                2: { desc: 'Berawan', icon: 'cloud', color: 'text-slate-300' },
+                3: { desc: 'Mendung', icon: 'cloud', color: 'text-slate-400' },
+                45: { desc: 'Kabut', icon: 'cloud-fog', color: 'text-slate-200' },
+                48: { desc: 'Kabut Rime', icon: 'cloud-fog', color: 'text-slate-200' },
+                51: { desc: 'Gerimis Ringan', icon: 'cloud-drizzle', color: 'text-blue-300' },
+                61: { desc: 'Hujan Ringan', icon: 'cloud-rain', color: 'text-blue-400' },
+                63: { desc: 'Hujan Sedang', icon: 'cloud-rain', color: 'text-blue-500' },
+                65: { desc: 'Hujan Lebat', icon: 'cloud-rain', color: 'text-blue-600' },
+                80: { desc: 'Hujan Guyur', icon: 'cloud-showers-heavy', color: 'text-blue-400' },
+                95: { desc: 'Badai Petir', icon: 'cloud-lightning', color: 'text-yellow-500' },
+            };
+            return mapping[code] || { desc: 'Tidak Diketahui', icon: 'help-circle', color: 'text-slate-500' };
+        }
+
+        async function fetchWeather(lat, lon, name) {
             showLoading(true);
             try {
-                // WeatherAPI menggunakan parameter 'q' untuk kota, koordinat, atau IP
-                const url = `${BASE_URL}?key=${API_KEY}&q=${encodeURIComponent(query)}&lang=id`;
+                const url = `${WEATHER_URL}?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`;
                 const response = await fetch(url);
                 const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.error ? data.error.message : "Gagal mengambil data.");
+                if (data.current) {
+                    updateUI(data.current, name);
+                } else {
+                    throw new Error("Data cuaca tidak tersedia.");
                 }
-
-                updateUI(data);
             } catch (error) {
-                console.error("Error:", error);
-                showError(error.message);
+                showError("Gagal mengambil data cuaca.");
             } finally {
                 showLoading(false);
             }
         }
 
-        function updateUI(data) {
+        async function searchCity() {
+            const city = document.getElementById('cityInput').value.trim();
+            if (!city) return;
+
+            showLoading(true);
+            try {
+                const response = await fetch(`${GEO_URL}?name=${encodeURIComponent(city)}&count=1&language=id&format=json`);
+                const data = await response.json();
+
+                if (!data.results || data.results.length === 0) {
+                    throw new Error("Kota tidak ditemukan.");
+                }
+
+                const result = data.results[0];
+                const locationName = `${result.name}, ${result.country}`;
+                fetchWeather(result.latitude, result.longitude, locationName);
+            } catch (error) {
+                showError(error.message);
+                showLoading(false);
+            }
+        }
+
+        function updateUI(current, name) {
             weatherDisplay.classList.remove('hidden');
             infoMessage.classList.add('hidden');
 
-            const location = data.location;
-            const current = data.current;
+            const details = getWeatherDetails(current.weather_code);
 
-            document.getElementById('cityName').textContent = `${location.name}, ${location.country}`;
-            document.getElementById('weatherDesc').textContent = current.condition.text;
-            document.getElementById('temperature').textContent = Math.round(current.temp_c);
-            document.getElementById('humidity').textContent = `${current.humidity}%`;
-            document.getElementById('windSpeed').textContent = `${current.wind_kph} km/h`;
+            document.getElementById('cityName').textContent = name;
+            document.getElementById('weatherDesc').textContent = details.desc;
+            document.getElementById('temperature').textContent = Math.round(current.temperature_2m);
+            document.getElementById('humidity').textContent = `${current.relative_humidity_2m}%`;
+            document.getElementById('windSpeed').textContent = `${current.wind_speed_10m} km/h`;
 
-            // Update Icon dari API
-            const weatherImg = document.getElementById('weatherImg');
-            const fallbackIcon = document.getElementById('fallbackIcon');
-            
-            weatherImg.src = `https:${current.condition.icon}`;
-            weatherImg.classList.remove('hidden');
-            fallbackIcon.classList.add('hidden');
-        }
-
-        function searchCity() {
-            const city = document.getElementById('cityInput').value.trim();
-            if (city) {
-                fetchWeather(city);
-            }
+            const iconContainer = document.getElementById('weatherIconContainer');
+            iconContainer.innerHTML = `<i data-lucide="${details.icon}" class="w-32 h-32 ${details.color}"></i>`;
+            lucide.createIcons();
         }
 
         function getCurrentLocation() {
@@ -209,16 +228,17 @@
                 showLoading(true);
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        const coords = `${position.coords.latitude},${position.coords.longitude}`;
-                        fetchWeather(coords);
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        fetchWeather(lat, lon, "Lokasi Anda");
                     },
                     () => {
-                        showError("Izin lokasi ditolak. Silakan cari kota secara manual.");
+                        showError("Akses lokasi ditolak.");
                         showLoading(false);
                     }
                 );
             } else {
-                showError("Browser tidak mendukung geolokasi.");
+                showError("Browser tidak mendukung GPS.");
             }
         }
 
@@ -230,7 +250,7 @@
             weatherDisplay.classList.add('hidden');
             infoMessage.classList.remove('hidden');
             document.getElementById('statusText').textContent = message;
-            document.getElementById('infoIcon').innerHTML = `<i data-lucide="alert-circle" class="w-16 h-16 mx-auto mb-4 text-red-500 opacity-50"></i>`;
+            document.getElementById('infoIcon').innerHTML = `<i data-lucide="alert-triangle" class="w-16 h-16 mx-auto mb-6 text-red-500 opacity-50"></i>`;
             lucide.createIcons();
         }
 
