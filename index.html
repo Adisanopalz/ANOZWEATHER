@@ -54,7 +54,7 @@
         <!-- Header & Search -->
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold tracking-tight mb-2 text-blue-400">ANOZWEATHER</h1>
-            <p class="text-slate-400">Pantau cuaca di mana saja, kapan saja.</p>
+            <p class="text-slate-400">Pantau cuaca global dengan WeatherAPI</p>
         </header>
 
         <div class="flex flex-col gap-4 mb-8">
@@ -62,7 +62,7 @@
                 <input 
                     type="text" 
                     id="cityInput" 
-                    placeholder="Masukkan nama kota (misal: Jakarta, London...)" 
+                    placeholder="Cari kota (misal: Jakarta, Tokyo...)" 
                     class="w-full bg-slate-800/50 border border-slate-700 text-white px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-lg"
                 >
                 <button 
@@ -94,7 +94,8 @@
 
                 <div class="flex flex-col items-center mb-8">
                     <div id="weatherIconContainer" class="weather-icon-pulse mb-4">
-                        <i data-lucide="sun" class="w-24 h-24 text-yellow-400"></i>
+                        <img id="weatherImg" src="" alt="weather-icon" class="w-24 h-24 hidden">
+                        <div id="fallbackIcon"><i data-lucide="sun" class="w-24 h-24 text-yellow-400"></i></div>
                     </div>
                     <div class="flex items-start">
                         <span id="temperature" class="text-7xl font-bold">--</span>
@@ -126,58 +127,49 @@
             </div>
         </div>
 
-        <!-- Placeholder / Error Message -->
+        <!-- Info / Error Message -->
         <div id="infoMessage" class="glass-card p-12 text-center">
             <div id="infoIcon">
                 <i data-lucide="cloud-sun" class="w-16 h-16 mx-auto mb-4 text-slate-600"></i>
             </div>
-            <p id="statusText" class="text-slate-400">Cari kota atau gunakan lokasi Anda untuk melihat cuaca.</p>
-            <div id="apiWarning" class="hidden mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
-                Tip: Pastikan API Key Anda valid dan sudah diaktifkan di openweathermap.org.
+            <p id="statusText" class="text-slate-400 text-lg">Cari kota atau gunakan lokasi Anda untuk melihat cuaca.</p>
+            <div id="apiInfo" class="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-xs">
+                Menggunakan data dari WeatherAPI.com
             </div>
         </div>
     </div>
 
     <script>
-        // API Configuration
-        // GANTI API_KEY DI BAWAH INI DENGAN KEY ANDA SENDIRI JIKA ERROR BERLANJUT
-        const API_KEY = '5f67a23c03b1e3e061806f9d257127e4'; 
-        const BASE_URL = 'https://api.openweathermap.org/data/2.5/weather';
+        /**
+         * CONFIGURATION
+         * Kunjungi https://www.weatherapi.com/ untuk mendapatkan API KEY gratis.
+         * Key di bawah adalah placeholder.
+         */
+        const API_KEY = '69750036137a4e69888171723241405'; 
+        const BASE_URL = 'https://api.weatherapi.com/v1/current.json';
 
-        // Initialize Icons
         lucide.createIcons();
 
         const weatherDisplay = document.getElementById('weatherDisplay');
         const infoMessage = document.getElementById('infoMessage');
         const loadingOverlay = document.getElementById('loadingOverlay');
-        const apiWarning = document.getElementById('apiWarning');
 
         async function fetchWeather(query) {
             showLoading(true);
-            apiWarning.classList.add('hidden');
-            
             try {
-                const url = `${BASE_URL}?${query}&appid=${API_KEY}&units=metric&lang=id`;
+                // WeatherAPI menggunakan parameter 'q' untuk kota, koordinat, atau IP
+                const url = `${BASE_URL}?key=${API_KEY}&q=${encodeURIComponent(query)}&lang=id`;
                 const response = await fetch(url);
                 const data = await response.json();
 
                 if (!response.ok) {
-                    if (response.status === 401) {
-                        throw new Error("API Key tidak valid atau belum aktif.");
-                    } else if (response.status === 404) {
-                        throw new Error("Kota tidak ditemukan.");
-                    } else {
-                        throw new Error(data.message || "Gagal mengambil data.");
-                    }
+                    throw new Error(data.error ? data.error.message : "Gagal mengambil data.");
                 }
 
                 updateUI(data);
             } catch (error) {
-                console.error("Weather Error:", error);
+                console.error("Error:", error);
                 showError(error.message);
-                if (error.message.includes("API Key")) {
-                    apiWarning.classList.remove('hidden');
-                }
             } finally {
                 showLoading(false);
             }
@@ -187,42 +179,28 @@
             weatherDisplay.classList.remove('hidden');
             infoMessage.classList.add('hidden');
 
-            document.getElementById('cityName').textContent = `${data.name}, ${data.sys.country}`;
-            document.getElementById('weatherDesc').textContent = data.weather[0].description;
-            document.getElementById('temperature').textContent = Math.round(data.main.temp);
-            document.getElementById('humidity').textContent = `${data.main.humidity}%`;
-            document.getElementById('windSpeed').textContent = `${(data.wind.speed * 3.6).toFixed(1)} km/h`;
+            const location = data.location;
+            const current = data.current;
 
-            const iconContainer = document.getElementById('weatherIconContainer');
-            const condition = data.weather[0].main.toLowerCase();
-            let iconName = 'cloud';
-            let iconColor = 'text-slate-400';
+            document.getElementById('cityName').textContent = `${location.name}, ${location.country}`;
+            document.getElementById('weatherDesc').textContent = current.condition.text;
+            document.getElementById('temperature').textContent = Math.round(current.temp_c);
+            document.getElementById('humidity').textContent = `${current.humidity}%`;
+            document.getElementById('windSpeed').textContent = `${current.wind_kph} km/h`;
 
-            if (condition.includes('clear')) {
-                iconName = 'sun';
-                iconColor = 'text-yellow-400';
-            } else if (condition.includes('cloud')) {
-                iconName = 'cloud';
-                iconColor = 'text-slate-300';
-            } else if (condition.includes('rain')) {
-                iconName = 'cloud-rain';
-                iconColor = 'text-blue-400';
-            } else if (condition.includes('thunderstorm')) {
-                iconName = 'cloud-lightning';
-                iconColor = 'text-purple-400';
-            } else if (condition.includes('snow')) {
-                iconName = 'snowflake';
-                iconColor = 'text-blue-200';
-            }
-
-            iconContainer.innerHTML = `<i data-lucide="${iconName}" class="w-24 h-24 ${iconColor}"></i>`;
-            lucide.createIcons();
+            // Update Icon dari API
+            const weatherImg = document.getElementById('weatherImg');
+            const fallbackIcon = document.getElementById('fallbackIcon');
+            
+            weatherImg.src = `https:${current.condition.icon}`;
+            weatherImg.classList.remove('hidden');
+            fallbackIcon.classList.add('hidden');
         }
 
         function searchCity() {
             const city = document.getElementById('cityInput').value.trim();
             if (city) {
-                fetchWeather(`q=${encodeURIComponent(city)}`);
+                fetchWeather(city);
             }
         }
 
@@ -231,16 +209,16 @@
                 showLoading(true);
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        const { latitude, longitude } = position.coords;
-                        fetchWeather(`lat=${latitude}&lon=${longitude}`);
+                        const coords = `${position.coords.latitude},${position.coords.longitude}`;
+                        fetchWeather(coords);
                     },
-                    (err) => {
-                        showError("Izin lokasi ditolak atau GPS tidak aktif.");
+                    () => {
+                        showError("Izin lokasi ditolak. Silakan cari kota secara manual.");
                         showLoading(false);
                     }
                 );
             } else {
-                showError("Browser Anda tidak mendukung lokasi.");
+                showError("Browser tidak mendukung geolokasi.");
             }
         }
 
