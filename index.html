@@ -94,7 +94,6 @@
 
                 <div class="flex flex-col items-center mb-8">
                     <div id="weatherIconContainer" class="weather-icon-pulse mb-4">
-                        <!-- Icon will be inserted here -->
                         <i data-lucide="sun" class="w-24 h-24 text-yellow-400"></i>
                     </div>
                     <div class="flex items-start">
@@ -119,7 +118,7 @@
                             <i data-lucide="wind" class="text-teal-400"></i>
                         </div>
                         <div class="text-left">
-                            <p class="text-xs text-slate-400 uppercase tracking-wider">Kecepatan Angin</p>
+                            <p class="text-xs text-slate-400 uppercase tracking-wider">Angin</p>
                             <p id="windSpeed" class="text-xl font-bold">-- km/h</p>
                         </div>
                     </div>
@@ -128,16 +127,21 @@
         </div>
 
         <!-- Placeholder / Error Message -->
-        <div id="infoMessage" class="glass-card p-12 text-center text-slate-400">
-            <i data-lucide="cloud-sun" class="w-16 h-16 mx-auto mb-4 opacity-20"></i>
-            <p id="statusText">Cari kota atau gunakan lokasi Anda untuk melihat cuaca.</p>
+        <div id="infoMessage" class="glass-card p-12 text-center">
+            <div id="infoIcon">
+                <i data-lucide="cloud-sun" class="w-16 h-16 mx-auto mb-4 text-slate-600"></i>
+            </div>
+            <p id="statusText" class="text-slate-400">Cari kota atau gunakan lokasi Anda untuk melihat cuaca.</p>
+            <div id="apiWarning" class="hidden mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                Tip: Pastikan API Key Anda valid dan sudah diaktifkan di openweathermap.org.
+            </div>
         </div>
     </div>
 
     <script>
         // API Configuration
-        // Note: Anda harus mendaftar di openweathermap.org untuk mendapatkan API KEY gratis.
-        const API_KEY = '5f67a23c03b1e3e061806f9d257127e4'; // Placeholder (Gunakan key Anda sendiri jika ini limit)
+        // GANTI API_KEY DI BAWAH INI DENGAN KEY ANDA SENDIRI JIKA ERROR BERLANJUT
+        const API_KEY = '5f67a23c03b1e3e061806f9d257127e4'; 
         const BASE_URL = 'https://api.openweathermap.org/data/2.5/weather';
 
         // Initialize Icons
@@ -146,22 +150,34 @@
         const weatherDisplay = document.getElementById('weatherDisplay');
         const infoMessage = document.getElementById('infoMessage');
         const loadingOverlay = document.getElementById('loadingOverlay');
+        const apiWarning = document.getElementById('apiWarning');
 
         async function fetchWeather(query) {
             showLoading(true);
+            apiWarning.classList.add('hidden');
+            
             try {
-                let url = `${BASE_URL}?${query}&appid=${API_KEY}&units=metric&lang=id`;
+                const url = `${BASE_URL}?${query}&appid=${API_KEY}&units=metric&lang=id`;
                 const response = await fetch(url);
                 const data = await response.json();
 
-                if (data.cod !== 200) {
-                    throw new Error(data.message);
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error("API Key tidak valid atau belum aktif.");
+                    } else if (response.status === 404) {
+                        throw new Error("Kota tidak ditemukan.");
+                    } else {
+                        throw new Error(data.message || "Gagal mengambil data.");
+                    }
                 }
 
                 updateUI(data);
             } catch (error) {
-                console.error(error);
-                showError(error.message === 'city not found' ? 'Kota tidak ditemukan.' : 'Gagal mengambil data.');
+                console.error("Weather Error:", error);
+                showError(error.message);
+                if (error.message.includes("API Key")) {
+                    apiWarning.classList.remove('hidden');
+                }
             } finally {
                 showLoading(false);
             }
@@ -177,7 +193,6 @@
             document.getElementById('humidity').textContent = `${data.main.humidity}%`;
             document.getElementById('windSpeed').textContent = `${(data.wind.speed * 3.6).toFixed(1)} km/h`;
 
-            // Update Icon berdasarkan kondisi
             const iconContainer = document.getElementById('weatherIconContainer');
             const condition = data.weather[0].main.toLowerCase();
             let iconName = 'cloud';
@@ -195,6 +210,9 @@
             } else if (condition.includes('thunderstorm')) {
                 iconName = 'cloud-lightning';
                 iconColor = 'text-purple-400';
+            } else if (condition.includes('snow')) {
+                iconName = 'snowflake';
+                iconColor = 'text-blue-200';
             }
 
             iconContainer.innerHTML = `<i data-lucide="${iconName}" class="w-24 h-24 ${iconColor}"></i>`;
@@ -202,7 +220,7 @@
         }
 
         function searchCity() {
-            const city = document.getElementById('cityInput').value;
+            const city = document.getElementById('cityInput').value.trim();
             if (city) {
                 fetchWeather(`q=${encodeURIComponent(city)}`);
             }
@@ -216,31 +234,28 @@
                         const { latitude, longitude } = position.coords;
                         fetchWeather(`lat=${latitude}&lon=${longitude}`);
                     },
-                    () => {
-                        showError("Izin lokasi ditolak atau tidak tersedia.");
+                    (err) => {
+                        showError("Izin lokasi ditolak atau GPS tidak aktif.");
                         showLoading(false);
                     }
                 );
             } else {
-                showError("Browser Anda tidak mendukung Geolocation.");
+                showError("Browser Anda tidak mendukung lokasi.");
             }
         }
 
         function showLoading(isLoading) {
-            if (isLoading) {
-                loadingOverlay.classList.remove('hidden');
-            } else {
-                loadingOverlay.classList.add('hidden');
-            }
+            loadingOverlay.classList.toggle('hidden', !isLoading);
         }
 
         function showError(message) {
             weatherDisplay.classList.add('hidden');
             infoMessage.classList.remove('hidden');
             document.getElementById('statusText').textContent = message;
+            document.getElementById('infoIcon').innerHTML = `<i data-lucide="alert-circle" class="w-16 h-16 mx-auto mb-4 text-red-500 opacity-50"></i>`;
+            lucide.createIcons();
         }
 
-        // Handle Enter Key
         document.getElementById('cityInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') searchCity();
         });
