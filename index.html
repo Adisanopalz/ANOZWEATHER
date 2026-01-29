@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANOZWEATHER - Prakiraan Cuaca Dunia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to bottom right, #0f172a, #1e293b);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+        }
+
+        .weather-icon-pulse {
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-2xl mx-auto">
+        <!-- Header & Search -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold tracking-tight mb-2 text-blue-400">ANOZWEATHER</h1>
+            <p class="text-slate-400">Pantau cuaca di mana saja, kapan saja.</p>
+        </header>
+
+        <div class="flex flex-col gap-4 mb-8">
+            <div class="relative group">
+                <input 
+                    type="text" 
+                    id="cityInput" 
+                    placeholder="Masukkan nama kota (misal: Jakarta, London...)" 
+                    class="w-full bg-slate-800/50 border border-slate-700 text-white px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-lg"
+                >
+                <button 
+                    onclick="searchCity()" 
+                    class="absolute right-3 top-3 bg-blue-600 hover:bg-blue-500 p-2 rounded-xl transition-colors"
+                >
+                    <i data-lucide="search" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <button 
+                onclick="getCurrentLocation()" 
+                class="flex items-center justify-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors bg-blue-400/10 py-2 rounded-xl border border-blue-400/20"
+            >
+                <i data-lucide="map-pin" class="w-4 h-4"></i>
+                Gunakan Lokasi Saat Ini
+            </button>
+        </div>
+
+        <!-- Main Display -->
+        <div id="weatherDisplay" class="hidden">
+            <div class="glass-card p-8 text-center relative overflow-hidden">
+                <div id="loadingOverlay" class="absolute inset-0 bg-slate-900/80 flex items-center justify-center z-10 hidden">
+                    <div class="loading-spinner"></div>
+                </div>
+
+                <h2 id="cityName" class="text-3xl font-bold mb-1">---</h2>
+                <p id="weatherDesc" class="text-slate-400 capitalize mb-6">---</p>
+
+                <div class="flex flex-col items-center mb-8">
+                    <div id="weatherIconContainer" class="weather-icon-pulse mb-4">
+                        <!-- Icon will be inserted here -->
+                        <i data-lucide="sun" class="w-24 h-24 text-yellow-400"></i>
+                    </div>
+                    <div class="flex items-start">
+                        <span id="temperature" class="text-7xl font-bold">--</span>
+                        <span class="text-3xl font-semibold text-blue-400 mt-2">°C</span>
+                    </div>
+                </div>
+
+                <!-- Details Grid -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-800/40 p-4 rounded-2xl flex items-center gap-4">
+                        <div class="p-3 bg-blue-500/20 rounded-xl">
+                            <i data-lucide="droplets" class="text-blue-400"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-xs text-slate-400 uppercase tracking-wider">Kelembapan</p>
+                            <p id="humidity" class="text-xl font-bold">--%</p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800/40 p-4 rounded-2xl flex items-center gap-4">
+                        <div class="p-3 bg-teal-500/20 rounded-xl">
+                            <i data-lucide="wind" class="text-teal-400"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-xs text-slate-400 uppercase tracking-wider">Kecepatan Angin</p>
+                            <p id="windSpeed" class="text-xl font-bold">-- km/h</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Placeholder / Error Message -->
+        <div id="infoMessage" class="glass-card p-12 text-center text-slate-400">
+            <i data-lucide="cloud-sun" class="w-16 h-16 mx-auto mb-4 opacity-20"></i>
+            <p id="statusText">Cari kota atau gunakan lokasi Anda untuk melihat cuaca.</p>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration
+        // Note: Anda harus mendaftar di openweathermap.org untuk mendapatkan API KEY gratis.
+        const API_KEY = '5f67a23c03b1e3e061806f9d257127e4'; // Placeholder (Gunakan key Anda sendiri jika ini limit)
+        const BASE_URL = 'https://api.openweathermap.org/data/2.5/weather';
+
+        // Initialize Icons
+        lucide.createIcons();
+
+        const weatherDisplay = document.getElementById('weatherDisplay');
+        const infoMessage = document.getElementById('infoMessage');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        async function fetchWeather(query) {
+            showLoading(true);
+            try {
+                let url = `${BASE_URL}?${query}&appid=${API_KEY}&units=metric&lang=id`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.cod !== 200) {
+                    throw new Error(data.message);
+                }
+
+                updateUI(data);
+            } catch (error) {
+                console.error(error);
+                showError(error.message === 'city not found' ? 'Kota tidak ditemukan.' : 'Gagal mengambil data.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function updateUI(data) {
+            weatherDisplay.classList.remove('hidden');
+            infoMessage.classList.add('hidden');
+
+            document.getElementById('cityName').textContent = `${data.name}, ${data.sys.country}`;
+            document.getElementById('weatherDesc').textContent = data.weather[0].description;
+            document.getElementById('temperature').textContent = Math.round(data.main.temp);
+            document.getElementById('humidity').textContent = `${data.main.humidity}%`;
+            document.getElementById('windSpeed').textContent = `${(data.wind.speed * 3.6).toFixed(1)} km/h`;
+
+            // Update Icon berdasarkan kondisi
+            const iconContainer = document.getElementById('weatherIconContainer');
+            const condition = data.weather[0].main.toLowerCase();
+            let iconName = 'cloud';
+            let iconColor = 'text-slate-400';
+
+            if (condition.includes('clear')) {
+                iconName = 'sun';
+                iconColor = 'text-yellow-400';
+            } else if (condition.includes('cloud')) {
+                iconName = 'cloud';
+                iconColor = 'text-slate-300';
+            } else if (condition.includes('rain')) {
+                iconName = 'cloud-rain';
+                iconColor = 'text-blue-400';
+            } else if (condition.includes('thunderstorm')) {
+                iconName = 'cloud-lightning';
+                iconColor = 'text-purple-400';
+            }
+
+            iconContainer.innerHTML = `<i data-lucide="${iconName}" class="w-24 h-24 ${iconColor}"></i>`;
+            lucide.createIcons();
+        }
+
+        function searchCity() {
+            const city = document.getElementById('cityInput').value;
+            if (city) {
+                fetchWeather(`q=${encodeURIComponent(city)}`);
+            }
+        }
+
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                showLoading(true);
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        fetchWeather(`lat=${latitude}&lon=${longitude}`);
+                    },
+                    () => {
+                        showError("Izin lokasi ditolak atau tidak tersedia.");
+                        showLoading(false);
+                    }
+                );
+            } else {
+                showError("Browser Anda tidak mendukung Geolocation.");
+            }
+        }
+
+        function showLoading(isLoading) {
+            if (isLoading) {
+                loadingOverlay.classList.remove('hidden');
+            } else {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        function showError(message) {
+            weatherDisplay.classList.add('hidden');
+            infoMessage.classList.remove('hidden');
+            document.getElementById('statusText').textContent = message;
+        }
+
+        // Handle Enter Key
+        document.getElementById('cityInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchCity();
+        });
+    </script>
+</body>
+</html>
